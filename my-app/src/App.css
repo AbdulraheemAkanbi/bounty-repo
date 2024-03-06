@@ -1,0 +1,68 @@
+.App {
+  text-align: center;
+}
+
+body {
+  padding: 10px;
+  background: #61dafb;
+}
+
+icon{
+  width: 100%;
+}
+
+.title_header {
+  margin: 30px;
+  align-items: center;
+  padding-left: 40px;
+}
+
+.wrapper {
+  margin: 30px;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+
+  background-color: aliceblue;
+  border-radius: 5px;
+  box-shadow: 7px 7px 12px rgba(0, 0,0,0.05);
+
+}
+
+.form-control {
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  border-radius: 5px;
+  border: 2px dashed #61dafb;
+}
+.card {
+  margin: 10px;
+  align-items: center;
+  padding-left: 20px;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
