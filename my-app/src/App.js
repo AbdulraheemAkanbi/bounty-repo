@@ -2,20 +2,17 @@ import { useEffect,useState } from "react";
 import * as XLSX from 'xlsx';
 import "./App.css"
 import bootstrap from 'bootstrap'
-
 function App() {
-
   // onchange states
   const [excelFile, setExcelFile] = useState(null);
   const [typeError, setTypeError] = useState(null);
   const [tableName, setTableName] = useState("");
+  const [prompt, setPrompt] = useState('');
   const [tables, setTables] = useState([]);
 
   // submit state
   const [excelData, setExcelData] = useState(null);
   
-  
-
   useEffect(() => {
     fetch('http://localhost:3300/tables')
     .then(response => {
@@ -23,16 +20,39 @@ function App() {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       return response.json();
-    })
+    })
       .then(data => {
         console.log('Text:', data);
-     /*   const responseData = data && JSON.parse(data);
-        setTables(responseData);*/
+        setTables(data);
       })
       .catch(error => {
         console.error('Error fetching tables:', error);
       });
   }, []);
+
+  // Handle prompt input change
+const handlePromptChange = (e) => {
+  setPrompt(e.target.value);
+}
+
+// Handle prompt submit
+const handlePromptSubmit = () => {
+  fetch(`http://localhost:3300/runPrompt/${tableName}?prompt=${prompt}`, {
+      method: 'GET',
+      headers: {
+          'Content-Type': 'application/json',
+      },
+  })
+      .then(response => response.json())
+      .then(data => {
+          console.log('Prompt result:', data);
+          // Handle prompt result as needed
+      })
+      .catch(error => {
+          console.error('Error running prompt:', error);
+      });
+}
+
 
   // onchange event 
   const handleFile=(e)=>{
@@ -109,12 +129,20 @@ function App() {
 <p> Browse .csv or .xlsx file to upload </p>
 
     </div>
-    <input type="text" className="form-control"  placeholder="Table Name" value={tableName} onChange={handleTableNameChange} />
+    <select className="form-control" value={tableName} onChange={handleTableNameChange}>
+      <option value="">Select Table Name</option>
+      {tables.map((table, index) => (
+        <option key={index} value={table}>{table}</option>
+      ))}
+    </select>
     <button type="submit" className="btn btn-success btn-md" disabled={!tableName}>UPLOAD</button>
   </div>
   {typeError && (
     <div className="alert alert-danger" role="alert">{typeError}</div>
   )}
+
+<input type="text" className="form-control" placeholder="Enter prompt..." value={prompt} onChange={handlePromptChange} />
+<button type="button" className="btn btn-primary" onClick={handlePromptSubmit}>Run Prompt</button>
 </form>
 
 

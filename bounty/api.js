@@ -28,51 +28,74 @@ app.get('/users', (req, res) => {
 
 //api endpoint to get the list of all tables in the postgres database
 app.get('/tables', async (req, res) => {
-    try {
-        const query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;";
-        const result = await client.query('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 ORDER BY table_name',
-              ['public']);
-        const tables = result.rows.map(row => row.table_name);
-        res.setHeader('Content-Type', 'application/json'); // Set Content-Type header
-        res.json(tables);
-        console.log(res.json(tables));
-        console.log(result);
-    } catch (err) {
-        console.error('Error fetching tables:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+  try {
+      const query = `
+          SELECT jsonb_agg(table_name) AS tables
+          FROM (
+              SELECT table_name
+              FROM information_schema.tables
+              WHERE table_schema = 'public'
+              ORDER BY table_name
+          ) AS table_names;
+      `;
+      const result = await client.query(query);
+      const tables = result.rows[0].tables;
+      res.setHeader('Content-Type', 'application/json');
+      res.json(tables);
+  } catch (err) {
+      console.error('Error fetching tables:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
-const data = [
-    { id: "", firstname: '', lastname: "", occupation:"" },
- 
-  ];
-
-  //api enpoint to upload
-app.post('/upload', (req, res) => {
-    const { data, tableName } = req.body;
-    const keys = Object.keys(data[0]);
-    const values = data.map(item => Object.values(item));
-    
-    const query = `CREATE TABLE IF NOT EXISTS ${tableName} (${keys.map(key => `${key} TEXT`).join(', ')});`;
-  
-    client.query(query, (err, result) => {
+//api to run prompts against different tables
+app.get('/runPrompt/:tableName', (req, res) => {
+  const { tableName } = req.params;
+  const { prompt } = req.body;
+  const query = `
+    SELECT jsonb_agg(json_build_object(
+        'id', id,
+        'address', address,
+        'lastname', lastname,
+        'firstname', firstname
+    )) AS result
+    FROM ${tableName}
+    WHERE ${prompt};
+`;
+  client.query(query, (err, result) => {
       if (err) {
-        console.error('Error creating table:', err);
+          console.error('Error running prompt:', err);
+          res.status(500).send('Internal Server Error');
+          return;
+      }
+      res.send(result.rows);
+  });
+});
+
+//api endpoint to upload
+app.post('/upload/:tableName', (req, res) => {
+  const { tableName } = req.params;
+  const { data } = req.body;
+  const keys = Object.keys(data[0]);
+  const values = data.map(item => Object.values(item));
+  const query = `CREATE TABLE IF NOT EXISTS ${tableName} (${keys.map(key => `${key} TEXT`).join(', ')});`;
+
+  client.query(query, (err, result) => {
+    if (err) {
+      console.error('Error creating table:', err);
+      res.status(500).send('Internal Server Error');
+      return;
+    }
+
+    const insertQuery = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${values.map((_, index) => keys.map((_, i) => `$${index * keys.length + i + 1}`).join(', ')).join('), (')});`;
+
+    client.query(insertQuery, values.flat(), (err, result) => {
+      if (err) {
+        console.error('Error inserting data:', err);
         res.status(500).send('Internal Server Error');
         return;
       }
-  
-      const insertQuery = `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES (${values.map((_, index) => keys.map((_, i) => `$${index * keys.length + i + 1}`).join(', ')).join('), (')});`;
-  
-      client.query(insertQuery, values.flat(), (err, result) => {
-        if (err) {
-          console.error('Error inserting data:', err);
-          res.status(500).send('Internal Server Error');
-          return;
-        }
-  
-        res.send('Data inserted successfully');
-      });
+      res.send('Data inserted successfully');
     });
   });
+});
